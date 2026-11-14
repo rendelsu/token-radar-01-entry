@@ -1,15 +1,88 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Token Radar — pre-token protocols ranked by implied value</title>
+<title>Token Radar — pre-token protocols by implied value</title>
 <link rel="stylesheet" href="app.css">
+<script src="../data.js"></script>
 </head>
 <body>
-<a class="skip" href="#board">Skip to the board</a>
-<div id="app" aria-busy="true"></div>
-<script src="../data.js"></script>
+<header class="topbar">
+  <div class="brand"><span class="dot"></span>TOKEN RADAR</div>
+  <div class="meta" id="meta">Snapshot — DeFiLlama protocol index — radar-2 model</div>
+</header>
+
+<main>
+  <section class="hero">
+    <h1 id="headline">Pre-token protocols, ranked by implied value</h1>
+    <p class="intro" id="intro"></p>
+    <div class="kpis" id="kpis"></div>
+  </section>
+
+  <section class="method" id="method"></section>
+
+  <section class="controls">
+    <label>Search <input id="q" type="search" placeholder="Search name, category or chain"></label>
+    <label>Category <select id="cat"><option value="">All categories</option></select></label>
+    <label>Chain <select id="chain"><option value="">All chains</option></select></label>
+    <label>Minimum TVL
+      <select id="minTvl">
+        <option value="0">Any TVL</option>
+        <option value="100000000">$100M+</option>
+        <option value="500000000">$500M+</option>
+        <option value="1000000000">$1B+</option>
+      </select>
+    </label>
+    <label class="check"><input id="wlOnly" type="checkbox"> Watchlist only</label>
+    <label>Sort
+      <select id="sort">
+        <option value="rank">Implied value</option>
+        <option value="tvl">TVL</option>
+        <option value="change">7d change</option>
+        <option value="age">Age</option>
+        <option value="multiple">Multiple</option>
+      </select>
+    </label>
+    <button id="clearBtn" type="button">Clear filters</button>
+  </section>
+  <div class="count" id="count"></div>
+
+  <section class="detail" id="detail" hidden></section>
+
+  <table class="board" id="board">
+    <thead>
+      <tr>
+        <th data-sort="rank">Rank</th>
+        <th>Protocol</th>
+        <th>Category</th>
+        <th>Chains</th>
+        <th data-sort="tvl">TVL</th>
+        <th data-sort="change">7d</th>
+        <th data-sort="age">Age</th>
+        <th data-sort="multiple">Multiple</th>
+        <th data-sort="implied">Implied value</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <section class="live">
+    <h2>Tokens already trading — set aside, not ranked</h2>
+    <p id="liveNote"></p>
+    <table class="liveTable">
+      <thead><tr><th>Protocol</th><th>Category</th><th>TVL</th><th>Market cap</th><th>MCap / TVL</th></tr></thead>
+      <tbody id="liveRows"></tbody>
+    </table>
+  </section>
+
+  <footer>
+    <p>How to read this board: every implied value is TVL times a category multiple taken from the live
+    tokens in that category, times a seven-day growth factor and an age factor. The multiple is shrunk
+    toward the snapshot-wide median when a category has few live comparables, so one thin comparable
+    cannot set the price. Implied value is a model, not a price and not a promise: no row predicts
+    that a token will launch, or when.</p>
+  </footer>
+</main>
 <script src="app.js"></script>
 </body>
 </html>
