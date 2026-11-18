@@ -1,4 +1,4 @@
-// Token Radar entry point (round 2).
+// Token Radar entry point (round 3).
 //
 // Reads the snapshot, builds the board with lib/model.ts, and writes
 // the graded outputs:
@@ -63,6 +63,7 @@ function main(): void {
     median_multiple: board.median_multiple,
     global_median: board.global_median,
     live_n: board.live_n,
+    accounting: board.accounting,
     rows: board.rows,
     live: board.live,
   };

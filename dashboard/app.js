@@ -4,6 +4,7 @@
 (function () {
   var R = window.RADAR;
   var rows = R.rows;
+  var A = R.accounting;
   var state = { q: "", cat: "", chain: "", minTvl: 0, wl: false, sort: "rank", dir: 1 };
   var selected = null;
 
@@ -32,7 +33,7 @@
 
   // ---- header: headline, intro, KPIs, method --------------------------
   var top = rows[0];
-  $("meta").textContent = "Snapshot " + R.as_of + "  ·  DeFiLlama protocol index  ·  radar-2 model";
+  $("meta").textContent = "Snapshot " + R.as_of + "  ·  DeFiLlama protocol index  ·  radar-3 model";
   $("headline").textContent =
     top.name + " leads " + rows.length + " pre-token protocols by implied value";
   $("intro").innerHTML =
@@ -41,8 +42,11 @@
     "scored by the same model. Implied value is a model, not a promise — no row predicts " +
     "a token will launch, or when. <b>" + esc(top.name) + "</b> tops the board at <b>" + money(top.implied_value_usd) +
     "</b>, " + top.multiple.toFixed(2) + "x its $" + (top.tvl_usd / 1e9).toFixed(2) + "B of TVL.";
+  var wlLabel = A.watchlist_with_token === 0
+    ? "Watchlist covered — all pre-token"
+    : "Watchlist covered (" + A.watchlist_with_token + " with a token)";
   var kpis = [
-    [rows.filter(function (r) { return r.watchlist; }).length + " / 40", "Watchlist covered"],
+    [rows.filter(function (r) { return r.watchlist; }).length + " / " + A.watchlist_n, wlLabel],
     [String(rows.length), "Pre-token rows scored"],
     [money(R.total_implied), "Total implied value"],
     [R.median_multiple.toFixed(2) + "x", "Median multiple"],
@@ -55,6 +59,8 @@
     "Model — <b>implied = TVL x category multiple x 7d growth x age</b>. The multiple is the median " +
     "mcap/TVL of the live tokens in the protocol's category (" + R.live_n + " live tokens, winsorized, " +
     "shrunk toward the snapshot median " + R.global_median.toFixed(2) + "x when a category has few comps). " +
+    "All " + A.watchlist_n + " watchlist protocols record no token in the snapshot; the " + R.live_n +
+    " live-token protocols are priced as comparables and set aside below, never ranked. " +
     "Wrapped, staked, bridged and exchange products are set aside, never ranked.";
 
   // ---- filters ---------------------------------------------------------
@@ -149,28 +155,76 @@
     var vs = rows.filter(function (r) { return r.category === cat; }).map(function (r) { return r.tvl_usd; }).sort(function (a, b) { return a - b; });
     return vs[Math.floor(vs.length / 2)] || 0;
   }
+  // Each valuation factor with the snapshot figures it comes from, so
+  // the ranking can be traced without reconstructing the source.
+  // Missing inputs are flagged, never silently filled.
+  function traceTable(r) {
+    var multSrc;
+    if (r.comps_n > 0) {
+      multSrc = r.comps_n + " live comparable" + (r.comps_n > 1 ? "s" : "") + " in " + r.category +
+        ", median " + r.cat_median.toFixed(3) + "x (winsorized 0.005–5): (" + r.comps_n + " × " +
+        r.cat_median.toFixed(3) + " + 3 × " + R.global_median.toFixed(3) + ") ÷ " + (r.comps_n + 3) +
+        ", clamped to 0.05–3.00x";
+    } else {
+      multSrc = "no live comparable in " + r.category + " — the snapshot median " +
+        R.global_median.toFixed(3) + "x is used directly";
+    }
+    var growthSrc;
+    if (r.change_7d === null) {
+      growthSrc = "no 7d reading in the snapshot — factor defaults to 1.000 (missing-data treatment, flagged here)";
+    } else if (Math.abs(r.change_7d) > 25) {
+      growthSrc = "7d " + (r.change_7d >= 0 ? "+" : "") + r.change_7d.toFixed(2) + "%, clamped to " +
+        (r.change_7d >= 0 ? "+25%" : "-25%") + " → 1 + (" + (r.change_7d >= 0 ? "0.25" : "-0.25") + ")";
+    } else {
+      growthSrc = "7d " + (r.change_7d >= 0 ? "+" : "") + r.change_7d.toFixed(2) + "% → 1 + (" +
+        (r.change_7d / 100).toFixed(4) + ")";
+    }
+    var ageSrc;
+    if (r.listed_at) {
+      ageSrc = "listed " + r.listed_at + " → snapshot " + R.as_of + " = " + r.age_years.toFixed(2) +
+        "y → 0.85 + 0.15 × min(" + r.age_years.toFixed(2) + ", 5) ÷ 5";
+    } else {
+      ageSrc = "no listing date in the snapshot — age defaults to 1.00y → 0.85 + 0.15 × 1.00 ÷ 5 (assumption, flagged here)";
+    }
+    return '<table class="trace"><thead><tr><th>Step</th><th>Figure</th><th>Where it comes from</th></tr></thead><tbody>' +
+      "<tr><td>TVL</td><td class=\"fig\">" + fullMoney(r.tvl_usd) + "</td><td class=\"src\">Snapshot figure for " + esc(r.name) + ".</td></tr>" +
+      "<tr><td>× Category multiple</td><td class=\"fig\">" + r.multiple.toFixed(3) + "x</td><td class=\"src\">" + esc(multSrc) + "</td></tr>" +
+      "<tr><td>× Growth factor</td><td class=\"fig\">" + r.growth_factor.toFixed(3) + "</td><td class=\"src\">" + esc(growthSrc) + "</td></tr>" +
+      "<tr><td>× Age factor</td><td class=\"fig\">" + r.age_factor.toFixed(3) + "</td><td class=\"src\">" + esc(ageSrc) + "</td></tr>" +
+      "<tr><td>= Implied value</td><td class=\"fig\">" + fullMoney(r.implied_value_usd) + "</td><td class=\"src\">" +
+      fullMoney(r.tvl_usd) + " × " + r.multiple.toFixed(3) + " × " + r.growth_factor.toFixed(3) + " × " +
+      r.age_factor.toFixed(3) + ", rounded to the dollar.</td></tr></tbody></table>" +
+      '<p class="roundnote">Factors shown rounded to three decimals; the board multiplies unrounded snapshot values, ' +
+      "so checking the arithmetic from the rounded figures will not match to the last dollar.</p>";
+  }
   function openDetail(slug, scroll) {
     var r = rows.find(function (x) { return x.slug === slug; });
     if (!r) return;
     selected = slug;
     var medTvl = catMedianTvl(r.category);
-    var chg = r.change_7d === null ? "no 7d reading" : (r.change_7d >= 0 ? "+" : "") + r.change_7d.toFixed(2) + "%";
-    var compLine = r.comps_n > 0
-      ? r.category + " median " + r.cat_median.toFixed(2) + "x from " + r.comps_n + " live comparable" + (r.comps_n > 1 ? "s" : "") + ", shrunk toward the snapshot median " + R.global_median.toFixed(2) + "x"
-      : "no live comparable in " + r.category + ", so the snapshot median " + R.global_median.toFixed(2) + "x";
+    var listedLine = r.listed_at
+      ? "listed " + r.listed_at + " · snapshot " + R.as_of + " · " + age(r.age_years) + " with no token"
+      : "listing date not in the snapshot (age defaults to 1.0y) · records no token";
     $("detail").hidden = false;
     $("detail").innerHTML =
       "<h2>#" + r.rank + " — " + esc(r.name) + "</h2>" +
       '<div class="dsub">' + esc(r.slug) + " · " + esc(r.category) + " · " + esc(r.chains.join(", ")) +
-      " · listed " + age(r.age_years) + " ago · records no token.</div>" +
+      " · " + listedLine + (r.listed_at ? " · records no token." : ".") + "</div>" +
       '<div class="cards">' +
       '<div class="card"><div class="v">' + fullMoney(r.implied_value_usd) + '</div><div class="l">implied value</div></div>' +
       '<div class="card"><div class="v">' + fullMoney(r.tvl_usd) + '</div><div class="l">total value locked</div></div>' +
       '<div class="card"><div class="v">' + (r.change_7d === null ? "—" : (r.change_7d >= 0 ? "+" : "") + r.change_7d.toFixed(1) + "%") + '</div><div class="l">TVL change, 7 days</div></div>' +
       '<div class="card"><div class="v">' + age(r.age_years) + '</div><div class="l">running with no token</div></div></div>' +
-      "<h3>Why this rank — the model, step by step</h3>" +
-      '<div class="math">TVL ' + fullMoney(r.tvl_usd) + " × multiple " + r.multiple.toFixed(2) + " (" + esc(compLine) + ") = base " + fullMoney(r.base_value) +
-      "\n× growth " + r.growth_factor.toFixed(2) + " (7d " + chg + ") × age " + r.age_factor.toFixed(2) + " (" + age(r.age_years) + " with no token) = implied " + fullMoney(r.implied_value_usd) + "</div>" +
+      "<h3>Why this rank — the valuation, traced to the snapshot</h3>" +
+      traceTable(r) +
+      "<h3>How to farm it</h3>" +
+      '<div class="plansum"><b>Plan summary — </b>' + esc(r.plan_summary) + "</div>" +
+      '<ol class="steps">' + r.farm_steps.map(function (s) {
+        var cut = s.lastIndexOf("Cost:");
+        var head = cut > -1 ? s.slice(0, cut) : s;
+        var tail = cut > -1 ? s.slice(cut) : "";
+        return "<li>" + esc(head) + '<span class="cost">' + esc(tail) + "</span></li>";
+      }).join("") + "</ol>" +
       "<h3>How sure is the number? Move the multiple, move the value</h3>" +
       '<table class="sens"><thead><tr><th>Multiple</th><th>Implied value</th></tr></thead><tbody>' +
       "<tr><td>" + (r.multiple * 0.8).toFixed(2) + "x (20% lower)</td><td>" + fullMoney(r.implied_low) + "</td></tr>" +
@@ -187,14 +241,7 @@
       '<div class="vsbar"><div class="lbl"><span>' + esc(r.name) + ' TVL ' + money(r.tvl_usd) + '</span><span>category median ' + money(medTvl) + "</span></div>" +
       '<div class="track"><div class="fill" style="width:' + Math.max(2, Math.min(100, (r.tvl_usd / Math.max(medTvl, r.tvl_usd)) * 100)) + '%"></div></div></div>' +
       '<div class="vsbar"><div class="lbl"><span>Multiple ' + r.multiple.toFixed(2) + 'x</span><span>category median ' + r.cat_median.toFixed(2) + "x</span></div>" +
-      '<div class="track"><div class="fill cmp" style="width:' + Math.max(2, Math.min(100, (r.multiple / Math.max(r.cat_median, r.multiple)) * 100)) + '%"></div></div></div>' +
-      "<h3>How to farm it</h3>" +
-      '<ol class="steps">' + r.farm_steps.map(function (s) {
-        var cut = s.lastIndexOf("Cost:");
-        var head = cut > -1 ? s.slice(0, cut) : s;
-        var tail = cut > -1 ? s.slice(cut) : "";
-        return "<li>" + esc(head) + '<span class="cost">' + esc(tail) + "</span></li>";
-      }).join("") + "</ol>";
+      '<div class="track"><div class="fill cmp" style="width:' + Math.max(2, Math.min(100, (r.multiple / Math.max(r.cat_median, r.multiple)) * 100)) + '%"></div></div></div>';
     drawScatter($("scatter"), r);
     render();
     if (scroll) $("detail").scrollIntoView({ behavior: "auto", block: "start" });
@@ -234,10 +281,17 @@
   }
 
   // ---- live tokens, set aside ------------------------------------------
+  // Every protocol in the snapshot is accounted for: ranked, a live
+  // comparable shown here in full, or set aside with its reason.
+  var sa = A.set_aside;
   $("liveNote").textContent =
-    R.live_n + " live tokens were priced as comparables and set aside; the twelve largest by market cap are shown. " +
-    "A protocol leaves this list and joins the board only when the snapshot stops recording a token for it.";
-  $("liveRows").innerHTML = R.live.slice(0, 12).map(function (p) {
+    A.snapshot_n + " protocols in the snapshot: " + A.ranked_n + " ranked above, " + A.live_n +
+    " live-token comparables below (all " + R.live.length + " shown, largest first), " + A.set_aside_n +
+    " set aside — " + sa.has_token + " with a token on record, " + sa.blocked_category +
+    " in blocked categories, " + sa.versioned_name + " versioned redeploys, " + sa.staking_name +
+    " staking-named, " + sa.below_floor + " under $5M TVL. A protocol leaves this list and joins " +
+    "the board only when the snapshot stops recording a token for it.";
+  $("liveRows").innerHTML = R.live.map(function (p) {
     return "<tr><td>" + esc(p.name) + "</td><td>" + esc(p.category) + "</td><td>" + money(p.tvl_usd) +
       "</td><td>" + money(p.mcap_usd) + "</td><td>" + p.ratio.toFixed(2) + "x</td></tr>";
   }).join("");
@@ -249,5 +303,5 @@
   if (c) { $("cat").value = decodeURIComponent(c[1]); }
   readControls();
   render();
-  if (m) openDetail(m[1], false);
+  if (m) openDetail(m[1], true);
 })();

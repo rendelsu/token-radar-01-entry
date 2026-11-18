@@ -76,20 +76,26 @@ table { border-collapse: collapse; width: 100%; }
 .imp { font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .detail {
   border: 1px solid var(--gold-dim); border-radius: 10px; background: var(--panel);
-  padding: 20px 22px; margin: 6px 0 18px;
+  padding: 16px 22px; margin: 6px 0 18px;
 }
 .detail h2 { margin: 0 0 2px; font-size: 22px; }
-.detail .dsub { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
-.cards { display: flex; gap: 12px; margin-bottom: 16px; }
+.detail .dsub { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+.cards { display: flex; gap: 12px; margin-bottom: 12px; }
 .card { flex: 1; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
 .card .v { font-size: 20px; font-weight: 700; }
 .card .l { color: var(--muted); font-size: 12px; }
-.detail h3 { font-size: 14px; margin: 18px 0 8px; }
-.math {
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px;
-  background: #0a0d11; border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px;
-  color: var(--gold); white-space: pre-wrap;
+.detail h3 { font-size: 14px; margin: 14px 0 6px; }
+.trace { width: 100%; }
+.trace th, .trace td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--line); font-size: 13px; vertical-align: top; }
+.trace th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+.trace td.fig { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+.trace td.src { color: var(--muted); }
+.roundnote { color: var(--faint); font-size: 12px; margin: 4px 0 0; }
+.plansum {
+  background: #0a0d11; border: 1px solid var(--line); border-radius: 8px;
+  padding: 8px 14px; font-size: 13px; margin: 0 0 4px;
 }
+.plansum b { color: var(--gold); }
 .sens { width: auto; }
 .sens th, .sens td { padding: 6px 16px 6px 0; text-align: left; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 .sens th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
@@ -103,12 +109,14 @@ table { border-collapse: collapse; width: 100%; }
 .vsbar .fill { height: 8px; border-radius: 4px; background: var(--gold); }
 .vsbar .fill.cmp { background: var(--blue); }
 .steps { padding-left: 20px; margin: 6px 0 0; }
-.steps li { margin-bottom: 9px; }
+.steps li { margin-bottom: 7px; }
 .steps li::marker { color: var(--gold); font-weight: 700; }
 .steps .cost { color: var(--muted); }
 .live { margin-top: 34px; }
 .live h2 { font-size: 18px; margin-bottom: 4px; }
 .live p { color: var(--muted); font-size: 13px; margin-top: 0; }
+.liveScroll { max-height: 430px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; }
+.liveScroll thead th { position: sticky; top: 0; background: var(--panel); }
 .liveTable th, .liveTable td { padding: 7px 10px; text-align: left; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 .liveTable th { color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
 footer { margin-top: 30px; border-top: 1px solid var(--line); padding-top: 14px; color: var(--muted); font-size: 12px; }
